@@ -90,12 +90,19 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
       // Filter out empty subtasks
       const filteredSubtasks = subtasks.filter(st => st.trim() !== "");
       
-      // Make sure to use categorySlug properly
-      const selectedCategory = data.category;
+      // Format the data correctly for the API
+      const taskData = {
+        name: data.name,
+        briefDescription: data.briefDescription,
+        detailedDescription: data.detailedDescription,
+        frequency: data.frequency,
+        priority: data.priority,
+        categorySlug: data.category, // The category field contains the slug
+        dueDate: data.dueDate
+      };
       
       console.log("Submitting task:", { 
-        ...data, 
-        categorySlug: selectedCategory,
+        task: taskData,
         subtasks: filteredSubtasks 
       });
       
@@ -106,24 +113,26 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          task: {
-            ...data,
-            categorySlug: selectedCategory, // Using the slug directly
-          },
+          task: taskData,
           subtasks: filteredSubtasks
         })
       });
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Server error response:", errorData);
         throw new Error(errorData.message || "Failed to create task");
       }
+      
+      const createdTask = await response.json();
+      console.log("Created task:", createdTask);
       
       toast({
         title: "Success",
         description: "Task created successfully",
       });
       
+      // Reset form and go back to task list
       onTaskCreated();
     } catch (error) {
       console.error("Failed to create task:", error);
@@ -265,7 +274,13 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
                   onClick={() => removeSubtask(index)}
                   className="p-2 text-[#BF616A]"
                 >
-                  <i className="ri-delete-bin-line"></i>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    <line x1="10" x2="10" y1="11" y2="17"></line>
+                    <line x1="14" x2="14" y1="11" y2="17"></line>
+                  </svg>
                 </button>
               </div>
             ))}
@@ -276,7 +291,10 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
             onClick={addSubtask}
             className="text-sm flex items-center text-[#5E81AC]"
           >
-            <i className="ri-add-line mr-1"></i> Add Subtask
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus mr-1">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add Subtask
           </button>
         </div>
         
