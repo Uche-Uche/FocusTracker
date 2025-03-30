@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertTaskSchema, insertSubtaskSchema, insertCategorySchema } from "@shared/schema";
+import { insertTaskSchema, insertSubtaskSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Task Routes
@@ -56,16 +56,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new task
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
-      console.log("Received task creation request:", req.body);
-      
-      if (!req.body.task) {
-        return res.status(400).json({ message: "Missing task data in request body" });
-      }
-      
       const taskValidation = insertTaskSchema.safeParse(req.body.task);
       
       if (!taskValidation.success) {
-        console.log("Task validation failed:", taskValidation.error.errors);
         return res.status(400).json({ 
           message: "Invalid task data", 
           errors: taskValidation.error.errors 
@@ -77,7 +70,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subtasksValidation = subtasksSchema.safeParse(req.body.subtasks);
       
       if (!subtasksValidation.success) {
-        console.log("Subtasks validation failed:", subtasksValidation.error.errors);
         return res.status(400).json({ 
           message: "Invalid subtasks data", 
           errors: subtasksValidation.error.errors 
@@ -85,14 +77,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const task = await storage.createTask(taskValidation.data, subtasksValidation.data);
-      console.log("Task created successfully:", task);
       res.status(201).json(task);
     } catch (error) {
-      console.error("Error creating task:", error);
-      res.status(500).json({ 
-        message: "Failed to create task", 
-        error: error instanceof Error ? error.message : String(error)
-      });
+      res.status(500).json({ message: "Failed to create task" });
     }
   });
   
@@ -136,118 +123,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Task deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete task" });
-    }
-  });
-  
-  // Category Routes
-  
-  // Get all categories
-  app.get("/api/categories", async (req: Request, res: Response) => {
-    try {
-      const categories = await storage.getCategories();
-      res.json(categories);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch categories" });
-    }
-  });
-  
-  // Get a specific category by slug
-  app.get("/api/categories/:slug", async (req: Request, res: Response) => {
-    try {
-      const slug = req.params.slug;
-      const category = await storage.getCategory(slug);
-      
-      if (!category) {
-        return res.status(404).json({ message: "Category not found" });
-      }
-      
-      res.json(category);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch category" });
-    }
-  });
-  
-  // Create a new category
-  app.post("/api/categories", async (req: Request, res: Response) => {
-    try {
-      console.log("Received category creation request:", req.body);
-      
-      const categoryValidation = insertCategorySchema.safeParse(req.body);
-      
-      if (!categoryValidation.success) {
-        console.log("Category validation failed:", categoryValidation.error.errors);
-        return res.status(400).json({ 
-          message: "Invalid category data", 
-          errors: categoryValidation.error.errors 
-        });
-      }
-      
-      const category = await storage.createCategory(categoryValidation.data);
-      console.log("Category created successfully:", category);
-      res.status(201).json(category);
-    } catch (error) {
-      console.error("Error creating category:", error);
-      res.status(500).json({ 
-        message: "Failed to create category", 
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-  
-  // Update a category
-  app.patch("/api/categories/:id", async (req: Request, res: Response) => {
-    try {
-      console.log("Received category update request:", req.params.id, req.body);
-      
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid category ID" });
-      }
-      
-      const partialCategory = req.body;
-      const updatedCategory = await storage.updateCategory(id, partialCategory);
-      
-      if (!updatedCategory) {
-        return res.status(404).json({ message: "Category not found" });
-      }
-      
-      console.log("Category updated successfully:", updatedCategory);
-      res.json(updatedCategory);
-    } catch (error) {
-      console.error("Error updating category:", error);
-      res.status(500).json({ 
-        message: "Failed to update category", 
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-  
-  // Delete a category
-  app.delete("/api/categories/:id", async (req: Request, res: Response) => {
-    try {
-      console.log("Received category deletion request:", req.params.id);
-      
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid category ID" });
-      }
-      
-      const success = await storage.deleteCategory(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Category not found" });
-      }
-      
-      console.log("Category deleted successfully:", id);
-      res.json({ message: "Category deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      res.status(500).json({ 
-        message: "Failed to delete category", 
-        error: error instanceof Error ? error.message : String(error)
-      });
     }
   });
   

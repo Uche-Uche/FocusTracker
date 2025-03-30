@@ -2,13 +2,15 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Categories table for tasks
-export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
-  slug: text("slug").notNull().unique(),
-  name: text("name").notNull(),
-  color: text("color").notNull(),
-});
+// Define categories for tasks
+export const categories = [
+  { id: "work", name: "Work Projects", color: "#5E81AC" },
+  { id: "learning", name: "Learning", color: "#88C0D0" },
+  { id: "health", name: "Health & Fitness", color: "#A3BE8C" },
+  { id: "personal", name: "Personal Projects", color: "#BF616A" },
+  { id: "reading", name: "Reading", color: "#3B4252" },
+  { id: "reflection", name: "Reflection", color: "#2E3440" }
+];
 
 // Users table (Keep from original schema)
 export const users = pgTable("users", {
@@ -23,7 +25,7 @@ export const tasks = pgTable("tasks", {
   name: text("name").notNull(),
   briefDescription: text("brief_description").notNull(),
   detailedDescription: text("detailed_description"),
-  categorySlug: text("category_slug").notNull(),
+  category: text("category").notNull(),
   frequency: text("frequency").notNull(), // 'daily' or 'weekly'
   dueDate: timestamp("due_date").notNull(),
   priority: text("priority").default("medium"),
@@ -40,10 +42,6 @@ export const subtasks = pgTable("subtasks", {
 });
 
 // Zod schemas
-export const insertCategorySchema = createInsertSchema(categories).omit({
-  id: true,
-});
-
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -65,9 +63,6 @@ export const insertSubtaskSchema = createInsertSchema(subtasks).omit({
 });
 
 // Types
-export type InsertCategory = z.infer<typeof insertCategorySchema>;
-export type Category = typeof categories.$inferSelect;
-
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -80,15 +75,4 @@ export type Subtask = typeof subtasks.$inferSelect;
 // Extended task type with subtasks
 export type TaskWithSubtasks = Task & {
   subtasks: Subtask[];
-  category?: Category;  // Category details included when returning tasks
 };
-
-// Default categories - will be used to initially populate the categories table
-export const defaultCategories = [
-  { slug: "work", name: "Work Projects", color: "#5E81AC" },
-  { slug: "learning", name: "Learning", color: "#88C0D0" },
-  { slug: "health", name: "Health & Fitness", color: "#A3BE8C" },
-  { slug: "personal", name: "Personal Projects", color: "#BF616A" },
-  { slug: "reading", name: "Reading", color: "#3B4252" },
-  { slug: "reflection", name: "Reflection", color: "#2E3440" }
-];
