@@ -1,17 +1,28 @@
 import { 
   tasks, 
   subtasks, 
-  users, 
+  users,
+  categories, 
   type Task, 
   type InsertTask,
   type Subtask,
   type InsertSubtask,
   type User,
   type InsertUser,
-  type TaskWithSubtasks
+  type Category,
+  type InsertCategory,
+  type TaskWithSubtasks,
+  defaultCategories
 } from "@shared/schema";
 
 export interface IStorage {
+  // Category methods
+  getCategories(): Promise<Category[]>;
+  getCategory(slug: string): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, category: Partial<Category>): Promise<Category | undefined>;
+  deleteCategory(id: number): Promise<boolean>;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -36,17 +47,79 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private tasks: Map<number, Task>;
   private subtasks: Map<number, Subtask>;
+  private categories: Map<number, Category>;
+  private categorySlugToIdMap: Map<string, number>;
   private userCurrentId: number;
   private taskCurrentId: number;
   private subtaskCurrentId: number;
+  private categoryCurrentId: number;
 
   constructor() {
     this.users = new Map();
     this.tasks = new Map();
     this.subtasks = new Map();
+    this.categories = new Map();
+    this.categorySlugToIdMap = new Map();
     this.userCurrentId = 1;
     this.taskCurrentId = 1;
     this.subtaskCurrentId = 1;
+    this.categoryCurrentId = 1;
+    
+    // Initialize with default categories
+    this.initializeDefaultCategories();
+  }
+  
+  private async initializeDefaultCategories() {
+    for (const category of defaultCategories) {
+      await this.createCategory(category);
+    }
+  }
+  
+  // Category methods
+  async getCategories(): Promise<Category[]> {
+    return Array.from(this.categories.values());
+  }
+  
+  async getCategory(slug: string): Promise<Category | undefined> {
+    const id = this.categorySlugToIdMap.get(slug);
+    if (!id) return undefined;
+    return this.categories.get(id);
+  }
+  
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const id = this.categoryCurrentId++;
+    const newCategory: Category = { ...category, id };
+    this.categories.set(id, newCategory);
+    this.categorySlugToIdMap.set(category.slug, id);
+    return newCategory;
+  }
+  
+  async updateCategory(id: number, categoryUpdate: Partial<Category>): Promise<Category | undefined> {
+    const existingCategory = this.categories.get(id);
+    if (!existingCategory) {
+      return undefined;
+    }
+    
+    // If slug is being changed, update the mapping
+    if (categoryUpdate.slug && categoryUpdate.slug !== existingCategory.slug) {
+      this.categorySlugToIdMap.delete(existingCategory.slug);
+      this.categorySlugToIdMap.set(categoryUpdate.slug, id);
+    }
+    
+    const updatedCategory: Category = { ...existingCategory, ...categoryUpdate };
+    this.categories.set(id, updatedCategory);
+    return updatedCategory;
+  }
+  
+  async deleteCategory(id: number): Promise<boolean> {
+    const category = this.categories.get(id);
+    if (!category) {
+      return false;
+    }
+    
+    this.categorySlugToIdMap.delete(category.slug);
+    this.categories.delete(id);
+    return true;
   }
 
   // User methods
@@ -74,7 +147,8 @@ export class MemStorage implements IStorage {
     return Promise.all(
       tasksList.map(async (task) => {
         const taskSubtasks = await this.getSubtasks(task.id);
-        return { ...task, subtasks: taskSubtasks };
+        const category = await this.getCategory(task.categorySlug);
+        return { ...task, subtasks: taskSubtasks, category };
       })
     );
   }
@@ -86,7 +160,8 @@ export class MemStorage implements IStorage {
     return Promise.all(
       tasksList.map(async (task) => {
         const taskSubtasks = await this.getSubtasks(task.id);
-        return { ...task, subtasks: taskSubtasks };
+        const category = await this.getCategory(task.categorySlug);
+        return { ...task, subtasks: taskSubtasks, category };
       })
     );
   }
@@ -99,13 +174,28 @@ export class MemStorage implements IStorage {
     }
     
     const taskSubtasks = await this.getSubtasks(id);
-    return { ...task, subtasks: taskSubtasks };
+    const category = await this.getCategory(task.categorySlug);
+    return { ...task, subtasks: taskSubtasks, category };
   }
 
   async createTask(insertTask: InsertTask, subtaskDescriptions: string[]): Promise<TaskWithSubtasks> {
     const id = this.taskCurrentId++;
     const createdAt = new Date();
-    const task: Task = { ...insertTask, id, createdAt };
+    
+    // Create properly typed task with all properties explicitly assigned
+    const task: Task = {
+      id,
+      name: insertTask.name,
+      briefDescription: insertTask.briefDescription,
+      detailedDescription: insertTask.detailedDescription || null,
+      categorySlug: insertTask.categorySlug,
+      frequency: insertTask.frequency,
+      dueDate: insertTask.dueDate,
+      priority: insertTask.priority || "medium",
+      completed: insertTask.completed || false,
+      createdAt
+    };
+    
     this.tasks.set(id, task);
     
     // Create subtasks
@@ -122,7 +212,10 @@ export class MemStorage implements IStorage {
       }
     }
     
-    return { ...task, subtasks: createdSubtasks };
+    // Get the category
+    const category = await this.getCategory(task.categorySlug);
+    
+    return { ...task, subtasks: createdSubtasks, category };
   }
 
   async updateTask(id: number, taskUpdate: Partial<Task>): Promise<TaskWithSubtasks | undefined> {
@@ -136,7 +229,9 @@ export class MemStorage implements IStorage {
     this.tasks.set(id, updatedTask);
     
     const taskSubtasks = await this.getSubtasks(id);
-    return { ...updatedTask, subtasks: taskSubtasks };
+    const category = await this.getCategory(updatedTask.categorySlug);
+    
+    return { ...updatedTask, subtasks: taskSubtasks, category };
   }
 
   async deleteTask(id: number): Promise<boolean> {
@@ -166,7 +261,13 @@ export class MemStorage implements IStorage {
 
   async createSubtask(insertSubtask: InsertSubtask): Promise<Subtask> {
     const id = this.subtaskCurrentId++;
-    const subtask: Subtask = { ...insertSubtask, id };
+    // Create proper subtask object with correct typing
+    const subtask: Subtask = {
+      id, 
+      taskId: insertSubtask.taskId,
+      description: insertSubtask.description,
+      completed: insertSubtask.completed !== undefined ? insertSubtask.completed : false
+    };
     this.subtasks.set(id, subtask);
     return subtask;
   }
@@ -196,4 +297,9 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Import the PostgreSQL storage implementation
+import { dbStorage } from "./dbStorage";
+
+// Use PostgreSQL storage if the DATABASE_URL environment variable is set
+// Otherwise fall back to in-memory storage for development
+export const storage = process.env.DATABASE_URL ? dbStorage : new MemStorage();
