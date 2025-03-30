@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { insertTaskSchema, categories } from "@shared/schema";
+import { insertTaskSchema, Category } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 // Extend the task schema with validation rules
@@ -23,7 +23,38 @@ interface TaskFormProps {
 
 export default function TaskForm({ onTaskCreated }: TaskFormProps) {
   const [subtasks, setSubtasks] = useState<string[]>([""]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const { toast } = useToast();
+  
+  // Fetch categories when component mounts
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setCategories(data);
+          }
+        } else {
+          throw new Error('Failed to fetch categories');
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast({
+          title: "Warning",
+          description: "Failed to load categories. Some options may be unavailable.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    
+    fetchCategories();
+  }, [toast]);
   
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -59,9 +90,22 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
       // Filter out empty subtasks
       const filteredSubtasks = subtasks.filter(st => st.trim() !== "");
       
-      await apiRequest("POST", "/api/tasks", {
-        task: data,
-        subtasks: filteredSubtasks
+      // Make sure to use categorySlug properly
+      const selectedCategory = data.category;
+      
+      // Create the task with proper data
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task: {
+            ...data,
+            categorySlug: selectedCategory, // Using the slug directly
+          },
+          subtasks: filteredSubtasks
+        })
       });
       
       toast({
@@ -133,11 +177,14 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
             <select
               id="category"
               {...register("category")}
-              className={`w-full px-3 py-2 border ${errors.category ? 'border-red-500' : 'border-[#D8DEE9]'} rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5E81AC]/25 focus:border-[#5E81AC]`}
+              disabled={isLoadingCategories}
+              className={`w-full px-3 py-2 border ${errors.category ? 'border-red-500' : 'border-[#D8DEE9]'} rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5E81AC]/25 focus:border-[#5E81AC] ${isLoadingCategories ? 'opacity-60' : ''}`}
             >
-              <option value="">Select a category</option>
-              {categories.map(category => (
-                <option key={category.id} value={category.id}>{category.name}</option>
+              <option value="">
+                {isLoadingCategories ? 'Loading categories...' : 'Select a category'}
+              </option>
+              {!isLoadingCategories && categories.map((category) => (
+                <option key={category.id} value={category.slug}>{category.name}</option>
               ))}
             </select>
             {errors.category && (
