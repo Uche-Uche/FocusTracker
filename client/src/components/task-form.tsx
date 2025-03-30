@@ -66,7 +66,7 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
       // Filter out empty subtasks
       const filteredSubtasks = subtasks.filter(st => st.trim() !== "");
       
-      await apiRequest("/api/tasks", "POST", {
+      await apiRequest("POST", "/api/tasks", {
         task: data,
         subtasks: filteredSubtasks
       });
