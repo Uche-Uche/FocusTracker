@@ -105,7 +105,16 @@ export class MemStorage implements IStorage {
   async createTask(insertTask: InsertTask, subtaskDescriptions: string[]): Promise<TaskWithSubtasks> {
     const id = this.taskCurrentId++;
     const createdAt = new Date();
-    const task: Task = { ...insertTask, id, createdAt };
+    
+    // Ensure all required fields are properly set with correct types
+    const task: Task = { 
+      ...insertTask, 
+      id, 
+      createdAt,
+      detailedDescription: insertTask.detailedDescription || null,
+      priority: insertTask.priority || "medium",
+      completed: insertTask.completed || false
+    };
     this.tasks.set(id, task);
     
     // Create subtasks
@@ -166,7 +175,12 @@ export class MemStorage implements IStorage {
 
   async createSubtask(insertSubtask: InsertSubtask): Promise<Subtask> {
     const id = this.subtaskCurrentId++;
-    const subtask: Subtask = { ...insertSubtask, id };
+    // Ensure completed has the right type (boolean | null)
+    const subtask: Subtask = { 
+      ...insertSubtask, 
+      id,
+      completed: insertSubtask.completed || false
+    };
     this.subtasks.set(id, subtask);
     return subtask;
   }

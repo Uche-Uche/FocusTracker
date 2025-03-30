@@ -8,8 +8,9 @@ export const categories = [
   { id: "learning", name: "Learning", color: "#88C0D0" },
   { id: "health", name: "Health & Fitness", color: "#A3BE8C" },
   { id: "personal", name: "Personal Projects", color: "#BF616A" },
-  { id: "reading", name: "Reading", color: "#3B4252" },
-  { id: "reflection", name: "Reflection", color: "#2E3440" }
+  { id: "reading", name: "Books & Reading", color: "#3B4252" },
+  { id: "reflection", name: "Reflection", color: "#2E3440" },
+  { id: "hobbies", name: "Hobbies", color: "#D08770" }
 ];
 
 // Users table (Keep from original schema)
