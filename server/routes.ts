@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertTaskSchema, insertSubtaskSchema } from "@shared/schema";
+import { insertTaskSchema, insertSubtaskSchema, type Category } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Task Routes
@@ -152,6 +152,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedSubtask);
     } catch (error) {
       res.status(500).json({ message: "Failed to update subtask" });
+    }
+  });
+
+  // Category Routes
+  
+  // Get all categories
+  app.get("/api/categories", async (req: Request, res: Response) => {
+    try {
+      const categories = await storage.getCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+  
+  // Get a specific category
+  app.get("/api/categories/:id", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const category = await storage.getCategoryById(id);
+      
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch category" });
+    }
+  });
+  
+  // Create a new category
+  app.post("/api/categories", async (req: Request, res: Response) => {
+    try {
+      const categorySchema = z.object({
+        id: z.string(),
+        name: z.string(),
+        color: z.string()
+      });
+      
+      const validation = categorySchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid category data", 
+          errors: validation.error.errors 
+        });
+      }
+      
+      const category = await storage.createCategory(validation.data);
+      res.status(201).json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+  
+  // Update a category
+  app.patch("/api/categories/:id", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const categoryUpdateSchema = z.object({
+        name: z.string().optional(),
+        color: z.string().optional()
+      });
+      
+      const validation = categoryUpdateSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid category data", 
+          errors: validation.error.errors 
+        });
+      }
+      
+      const updatedCategory = await storage.updateCategory(id, validation.data);
+      
+      if (!updatedCategory) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json(updatedCategory);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+  
+  // Delete a category
+  app.delete("/api/categories/:id", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id;
+      const success = await storage.deleteCategory(id);
+      
+      if (!success) {
+        return res.status(400).json({ 
+          message: "Category could not be deleted. It may be in use by existing tasks." 
+        });
+      }
+      
+      res.json({ message: "Category deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete category" });
     }
   });
 

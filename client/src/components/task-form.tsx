@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { insertTaskSchema, categories } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { insertTaskSchema, type Category } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 // Extend the task schema with validation rules
@@ -24,6 +25,12 @@ interface TaskFormProps {
 export default function TaskForm({ onTaskCreated }: TaskFormProps) {
   const [subtasks, setSubtasks] = useState<string[]>([""]);
   const { toast } = useToast();
+  
+  // Fetch categories
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
+    queryKey: ['/api/categories'],
+    enabled: true,
+  });
   
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -59,7 +66,7 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
       // Filter out empty subtasks
       const filteredSubtasks = subtasks.filter(st => st.trim() !== "");
       
-      await apiRequest("POST", "/api/tasks", {
+      await apiRequest("/api/tasks", "POST", {
         task: data,
         subtasks: filteredSubtasks
       });
@@ -134,11 +141,16 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
               id="category"
               {...register("category")}
               className={`w-full px-3 py-2 border ${errors.category ? 'border-red-500' : 'border-[#D8DEE9]'} rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5E81AC]/25 focus:border-[#5E81AC]`}
+              disabled={isLoadingCategories}
             >
               <option value="">Select a category</option>
-              {categories.map(category => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
+              {isLoadingCategories ? (
+                <option value="" disabled>Loading categories...</option>
+              ) : (
+                categories.map((category: Category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))
+              )}
             </select>
             {errors.category && (
               <p className="mt-1 text-sm text-red-500">{errors.category.message}</p>

@@ -2,8 +2,15 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Define categories for tasks
-export const categories = [
+// Define Category type
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+}
+
+// Default categories for tasks
+export const categories: Category[] = [
   { id: "work", name: "Work Projects", color: "#5E81AC" },
   { id: "learning", name: "Learning", color: "#88C0D0" },
   { id: "health", name: "Health & Fitness", color: "#A3BE8C" },

@@ -2,13 +2,15 @@ import {
   tasks, 
   subtasks, 
   users, 
+  categories as defaultCategories,
   type Task, 
   type InsertTask,
   type Subtask,
   type InsertSubtask,
   type User,
   type InsertUser,
-  type TaskWithSubtasks
+  type TaskWithSubtasks,
+  type Category
 } from "@shared/schema";
 
 export interface IStorage {
@@ -30,12 +32,20 @@ export interface IStorage {
   createSubtask(subtask: InsertSubtask): Promise<Subtask>;
   updateSubtask(id: number, completed: boolean): Promise<Subtask | undefined>;
   deleteSubtask(id: number): Promise<boolean>;
+  
+  // Category methods
+  getCategories(): Promise<Category[]>;
+  getCategoryById(id: string): Promise<Category | undefined>;
+  createCategory(category: Category): Promise<Category>;
+  updateCategory(id: string, category: Partial<Category>): Promise<Category | undefined>;
+  deleteCategory(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private tasks: Map<number, Task>;
   private subtasks: Map<number, Subtask>;
+  private categories: Map<string, Category>;
   private userCurrentId: number;
   private taskCurrentId: number;
   private subtaskCurrentId: number;
@@ -44,9 +54,15 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.tasks = new Map();
     this.subtasks = new Map();
+    this.categories = new Map();
     this.userCurrentId = 1;
     this.taskCurrentId = 1;
     this.subtaskCurrentId = 1;
+    
+    // Initialize with default categories
+    defaultCategories.forEach(category => {
+      this.categories.set(category.id, category);
+    });
   }
 
   // User methods
@@ -207,6 +223,50 @@ export class MemStorage implements IStorage {
     }
     
     return false;
+  }
+  
+  // Category methods
+  async getCategories(): Promise<Category[]> {
+    return Array.from(this.categories.values());
+  }
+  
+  async getCategoryById(id: string): Promise<Category | undefined> {
+    return this.categories.get(id);
+  }
+  
+  async createCategory(category: Category): Promise<Category> {
+    // Ensure id is unique by adding timestamp if needed
+    if (this.categories.has(category.id)) {
+      category.id = `${category.id}_${Date.now()}`;
+    }
+    
+    this.categories.set(category.id, category);
+    return category;
+  }
+  
+  async updateCategory(id: string, categoryUpdate: Partial<Category>): Promise<Category | undefined> {
+    const existingCategory = this.categories.get(id);
+    
+    if (!existingCategory) {
+      return undefined;
+    }
+    
+    const updatedCategory: Category = { ...existingCategory, ...categoryUpdate };
+    this.categories.set(id, updatedCategory);
+    
+    return updatedCategory;
+  }
+  
+  async deleteCategory(id: string): Promise<boolean> {
+    // Don't allow deletion if tasks are using this category
+    const tasksWithCategory = Array.from(this.tasks.values())
+      .filter(task => task.category === id);
+    
+    if (tasksWithCategory.length > 0) {
+      return false;
+    }
+    
+    return this.categories.delete(id);
   }
 }
 
