@@ -29,12 +29,12 @@ A minimalist task management application designed to help you focus on your most
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/30-day-focused-task-manager.git
+   git clone https://github.com/Uche-Uche/FocusTracker
    ```
 
 2. Navigate to the project directory
    ```
-   cd 30-day-focused-task-manager
+   cd FocusTracker
    ```
 
 3. Install dependencies
