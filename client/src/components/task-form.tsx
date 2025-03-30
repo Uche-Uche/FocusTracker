@@ -93,8 +93,14 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
       // Make sure to use categorySlug properly
       const selectedCategory = data.category;
       
+      console.log("Submitting task:", { 
+        ...data, 
+        categorySlug: selectedCategory,
+        subtasks: filteredSubtasks 
+      });
+      
       // Create the task with proper data
-      await fetch('/api/tasks', {
+      const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,6 +114,11 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
         })
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create task");
+      }
+      
       toast({
         title: "Success",
         description: "Task created successfully",
@@ -118,7 +129,7 @@ export default function TaskForm({ onTaskCreated }: TaskFormProps) {
       console.error("Failed to create task:", error);
       toast({
         title: "Error",
-        description: "Failed to create task. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create task. Please try again.",
         variant: "destructive"
       });
     }

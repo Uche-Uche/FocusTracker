@@ -56,9 +56,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new task
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
+      console.log("Received task creation request:", req.body);
+      
+      if (!req.body.task) {
+        return res.status(400).json({ message: "Missing task data in request body" });
+      }
+      
       const taskValidation = insertTaskSchema.safeParse(req.body.task);
       
       if (!taskValidation.success) {
+        console.log("Task validation failed:", taskValidation.error.errors);
         return res.status(400).json({ 
           message: "Invalid task data", 
           errors: taskValidation.error.errors 
@@ -70,6 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subtasksValidation = subtasksSchema.safeParse(req.body.subtasks);
       
       if (!subtasksValidation.success) {
+        console.log("Subtasks validation failed:", subtasksValidation.error.errors);
         return res.status(400).json({ 
           message: "Invalid subtasks data", 
           errors: subtasksValidation.error.errors 
@@ -77,9 +85,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const task = await storage.createTask(taskValidation.data, subtasksValidation.data);
+      console.log("Task created successfully:", task);
       res.status(201).json(task);
     } catch (error) {
-      res.status(500).json({ message: "Failed to create task" });
+      console.error("Error creating task:", error);
+      res.status(500).json({ 
+        message: "Failed to create task", 
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
   
@@ -157,9 +170,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new category
   app.post("/api/categories", async (req: Request, res: Response) => {
     try {
+      console.log("Received category creation request:", req.body);
+      
       const categoryValidation = insertCategorySchema.safeParse(req.body);
       
       if (!categoryValidation.success) {
+        console.log("Category validation failed:", categoryValidation.error.errors);
         return res.status(400).json({ 
           message: "Invalid category data", 
           errors: categoryValidation.error.errors 
@@ -167,15 +183,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const category = await storage.createCategory(categoryValidation.data);
+      console.log("Category created successfully:", category);
       res.status(201).json(category);
     } catch (error) {
-      res.status(500).json({ message: "Failed to create category" });
+      console.error("Error creating category:", error);
+      res.status(500).json({ 
+        message: "Failed to create category", 
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
   
   // Update a category
   app.patch("/api/categories/:id", async (req: Request, res: Response) => {
     try {
+      console.log("Received category update request:", req.params.id, req.body);
+      
       const id = parseInt(req.params.id);
       
       if (isNaN(id)) {
@@ -189,15 +212,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Category not found" });
       }
       
+      console.log("Category updated successfully:", updatedCategory);
       res.json(updatedCategory);
     } catch (error) {
-      res.status(500).json({ message: "Failed to update category" });
+      console.error("Error updating category:", error);
+      res.status(500).json({ 
+        message: "Failed to update category", 
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
   
   // Delete a category
   app.delete("/api/categories/:id", async (req: Request, res: Response) => {
     try {
+      console.log("Received category deletion request:", req.params.id);
+      
       const id = parseInt(req.params.id);
       
       if (isNaN(id)) {
@@ -210,9 +240,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Category not found" });
       }
       
+      console.log("Category deleted successfully:", id);
       res.json({ message: "Category deleted successfully" });
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete category" });
+      console.error("Error deleting category:", error);
+      res.status(500).json({ 
+        message: "Failed to delete category", 
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
   
