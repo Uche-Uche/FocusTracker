@@ -47,9 +47,15 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
-export const insertTaskSchema = createInsertSchema(tasks).omit({
+// Create the base insert schema
+const baseInsertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
+});
+
+// Extended schema with transformations
+export const insertTaskSchema = baseInsertTaskSchema.extend({
+  dueDate: z.string().transform((str) => new Date(str)),
 });
 
 export const insertSubtaskSchema = createInsertSchema(subtasks).omit({
